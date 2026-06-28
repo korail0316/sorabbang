@@ -15,9 +15,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    # cogs 폴더에서 fun.py를 불러오기
+    # 기존 코드 아래에 이 두 줄을 추가하세요
     await bot.load_extension('cogs.fun')
-    await bot.tree.sync() # 명령어 동기화
+    await bot.load_extension('cogs.timer')
+    
+    await bot.tree.sync()
     print(f'{bot.user} 소라빵이 가동되었습니다.')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
