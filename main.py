@@ -5,11 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# 1. 권한(intents) 정의
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = commands.Bot(command_prefix="!", intents=bot_intents) # 이 부분 수정
+# 2. 봇 객체 생성 (오타 수정됨: intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
