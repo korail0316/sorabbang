@@ -9,33 +9,31 @@ class Timer(commands.Cog):
 
     @app_commands.command(name="타이머", description="공부 타이머를 시작합니다.")
     async def timer(self, interaction: discord.Interaction, 분: int):
-        total_seconds = 분 * 60
-        
-        # 1. 초기 임베드 생성
+        # 1. 일단 즉시 응답을 보냅니다 (이걸 안 하면 오류가 납니다)
         embed = discord.Embed(
             title="⏱️ 소라스터디 집중 시간",
-            description=f"남은 시간: 00:{분:02d}:00",
+            description=f"준비 중...",
             color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed)
         
-        # 2. 5초마다 업데이트 (디스코드 제한 방지)
-        for remaining in range(total_seconds, 0, -5):
+        total_seconds = 분 * 60
+        
+        # 2. 이후 패널을 갱신합니다
+        for remaining in range(total_seconds, -1, -5): # 0초까지 포함
             h, rem = divmod(remaining, 3600)
             m, s = divmod(rem, 60)
-            
-            # 시간 형식: 00:00:00
             time_str = f"{h:02d}:{m:02d}:{s:02d}"
             
-            # 임베드 수정
-            embed.description = f"남은 시간: {time_str}"
+            if remaining > 0:
+                embed.description = f"남은 시간: {time_str}"
+            else:
+                embed.description = "🎉 **공부 끝!** 고생 많으셨습니다."
+                
             await interaction.edit_original_response(embed=embed)
             
-            await asyncio.sleep(5) # 5초 간격 업데이트
-        
-        # 3. 종료 메시지
-        embed.description = "🎉 **공부 끝!** 고생 많으셨습니다."
-        await interaction.edit_original_response(embed=embed)
+            if remaining > 0:
+                await asyncio.sleep(5)
 
 async def setup(bot):
     await bot.add_cog(Timer(bot))
