@@ -1,34 +1,41 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
+from discord.ext import commands
 import asyncio
 
 class Timer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="타이머", description="실시간으로 줄어드는 타이머 패널을 띄웁니다.")
-    async def timer(self, interaction: discord.Interaction, 공부시간분: int):
-        # 1. 처음에 메시지를 보냅니다.
-        await interaction.response.send_message(f"⏱️ **집중 시작!**\n남은 시간: {공부시간분}분 00초")
+    @app_commands.command(name="타이머", description="공부 타이머를 시작합니다.")
+    async def timer(self, interaction: discord.Interaction, 분: int):
+        total_seconds = 분 * 60
         
-        # 2. 남은 초를 계산합니다.
-        total_seconds = 공부시간분 * 60
-        
-        # 3. 1초씩 줄어들며 메시지를 수정합니다.
-        for remaining in range(total_seconds, 0, -1):
-            minutes, seconds = divmod(remaining, 60)
-            
-            # 메시지 업데이트
-            await interaction.edit_original_response(
-                content=f"⏱️ **집중 중...**\n남은 시간: {minutes}분 {seconds:02d}초"
-            )
-            await asyncio.sleep(1) # 1초 대기
-        
-        # 4. 종료 메시지
-        await interaction.edit_original_response(
-            content="🎉 **공부 끝!** 정말 고생 많으셨습니다. 이제 푹 쉬세요!"
+        # 1. 초기 임베드 생성
+        embed = discord.Embed(
+            title="⏱️ 소라스터디 집중 시간",
+            description=f"남은 시간: 00:{분:02d}:00",
+            color=discord.Color.blue()
         )
+        await interaction.response.send_message(embed=embed)
+        
+        # 2. 5초마다 업데이트 (디스코드 제한 방지)
+        for remaining in range(total_seconds, 0, -5):
+            h, rem = divmod(remaining, 3600)
+            m, s = divmod(rem, 60)
+            
+            # 시간 형식: 00:00:00
+            time_str = f"{h:02d}:{m:02d}:{s:02d}"
+            
+            # 임베드 수정
+            embed.description = f"남은 시간: {time_str}"
+            await interaction.edit_original_response(embed=embed)
+            
+            await asyncio.sleep(5) # 5초 간격 업데이트
+        
+        # 3. 종료 메시지
+        embed.description = "🎉 **공부 끝!** 고생 많으셨습니다."
+        await interaction.edit_original_response(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Timer(bot))
