@@ -7,22 +7,28 @@ class Timer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="타이머", description="공부 시간과 휴식 시간을 설정해서 함께 집중해요!")
-    async def timer(self, interaction: discord.Interaction, 공부시간분: int, 휴식시간분: int):
-        # 공부 시작 메시지
-        await interaction.response.send_message(f"⏱️ {interaction.user.mention}님, {공부시간분}분 동안 집중 시작합니다!")
+    @app_commands.command(name="타이머", description="실시간으로 줄어드는 타이머 패널을 띄웁니다.")
+    async def timer(self, interaction: discord.Interaction, 공부시간분: int):
+        # 1. 처음에 메시지를 보냅니다.
+        await interaction.response.send_message(f"⏱️ **집중 시작!**\n남은 시간: {공부시간분}분 00초")
         
-        # 공부 시간 대기
-        await asyncio.sleep(공부시간분 * 60)
+        # 2. 남은 초를 계산합니다.
+        total_seconds = 공부시간분 * 60
         
-        # 공부 끝, 휴식 시작 알림
-        await interaction.followup.send(f"🔔 {interaction.user.mention}님, {공부시간분}분이 지났어요! 이제 {휴식시간분}분 동안 휴식하세요!")
+        # 3. 1초씩 줄어들며 메시지를 수정합니다.
+        for remaining in range(total_seconds, 0, -1):
+            minutes, seconds = divmod(remaining, 60)
+            
+            # 메시지 업데이트
+            await interaction.edit_original_response(
+                content=f"⏱️ **집중 중...**\n남은 시간: {minutes}분 {seconds:02d}초"
+            )
+            await asyncio.sleep(1) # 1초 대기
         
-        # 휴식 시간 대기
-        await asyncio.sleep(휴식시간분 * 60)
-        
-        # 휴식 끝 알림
-        await interaction.followup.send(f"✅ {interaction.user.mention}님, 휴식 시간이 끝났습니다. 다시 힘내볼까요?")
+        # 4. 종료 메시지
+        await interaction.edit_original_response(
+            content="🎉 **공부 끝!** 정말 고생 많으셨습니다. 이제 푹 쉬세요!"
+        )
 
 async def setup(bot):
     await bot.add_cog(Timer(bot))
