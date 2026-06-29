@@ -16,7 +16,7 @@ class Fun(commands.Cog):
         await interaction.response.defer() 
         
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-pro')
             
             # 비동기 처리를 위해 run_in_executor 사용 (Gemini 라이브러리가 동기 방식일 때 유용)
             loop = asyncio.get_event_loop()
