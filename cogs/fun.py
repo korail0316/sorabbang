@@ -11,11 +11,16 @@ class Fun(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="포춘쿠키", description="AI가 생성하는 오늘의 점괘")
+  @app_commands.command(name="포춘쿠키", description="AI가 생성하는 오늘의 점괘")
     async def fortune(self, interaction: discord.Interaction):
-        await interaction.response.defer() 
+        await interaction.response.defer()
         
         try:
+            # 사용 가능한 모델 목록 확인용 코드
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    print(f"사용 가능한 모델: {m.name}") # 이 로그를 확인하세요!
+            
             model = genai.GenerativeModel('gemini-1.5-flash-latest')
             
             # 비동기 처리를 위해 run_in_executor 사용 (Gemini 라이브러리가 동기 방식일 때 유용)
