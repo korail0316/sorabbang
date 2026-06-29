@@ -22,9 +22,7 @@ class Fun(commands.Cog):
                 if 'generateContent' in m.supported_generation_methods:
                     print(f"사용 가능한 모델 이름: {m.name}")
             
-            # 현재 에러가 난 'gemini-1.5-flash' 대신, 
-            # 로그에 찍힐 '사용 가능한 모델 이름' 중 하나를 아래에 넣으세요.
-            model = genai.GenerativeModel('gemini-1.5-flash') 
+            model = genai.GenerativeModel('gemini-3.5-flash') 
             
             loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
