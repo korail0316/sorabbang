@@ -19,7 +19,8 @@ async def load_extensions():
 @bot.event
 async def on_ready():
     await load_extensions()
-    await bot.tree.sync() # 명령어 동기화
-    print(f'{bot.user} 소라빵이 가동되었습니다.')
+    # 명령어 강제 동기화
+    synced = await bot.tree.sync()
+    print(f'{bot.user} 소라빵 가동 완료! {len(synced)}개의 명령어가 동기화되었습니다.')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
