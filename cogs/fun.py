@@ -16,8 +16,15 @@ class Fun(commands.Cog):
         await interaction.response.defer()
         
         try:
-            # 404 에러가 계속 난다면 모델명을 'gemini-1.5-flash' 혹은 'gemini-1.5-pro'로 바꿔보세요.
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # 사용 가능한 모델 목록을 로그에 출력하여 확인합니다.
+            # 이 코드는 어떤 모델을 써야 할지 알려줍니다.
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    print(f"사용 가능한 모델 이름: {m.name}")
+            
+            # 현재 에러가 난 'gemini-1.5-flash' 대신, 
+            # 로그에 찍힐 '사용 가능한 모델 이름' 중 하나를 아래에 넣으세요.
+            model = genai.GenerativeModel('gemini-1.5-flash') 
             
             loop = asyncio.get_event_loop()
             response = await asyncio.wait_for(
@@ -28,11 +35,10 @@ class Fun(commands.Cog):
             embed = discord.Embed(title="🥠 AI 소라빵의 점괘", description=response.text, color=discord.Color.gold())
             await interaction.followup.send(embed=embed)
             
-        except asyncio.TimeoutError:
-            await interaction.followup.send("🥠 AI가 너무 깊게 고민하네요... 오늘은 노력한 만큼 반드시 결과가 나올 거예요!")
         except Exception as e:
+            # 여기서 에러 로그를 확인하고, 위에서 출력된 '사용 가능한 모델'로 이름을 바꿔야 합니다.
             await interaction.followup.send("🥠 AI가 잠시 낮잠 중이네요... 오늘은 노력한 만큼 반드시 결과가 나올 거예요!")
-            print(f"AI 에러 발생: {e}")
+            print(f"AI 에러 발생 상세: {e}")
 
 async def setup(bot):
     await bot.add_cog(Fun(bot))
