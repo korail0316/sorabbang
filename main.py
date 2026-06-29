@@ -5,21 +5,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 1. 권한(intents) 정의
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-# 2. 봇 객체 생성 (오타 수정됨: intents=intents)
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    # 기존 코드 아래에 이 두 줄을 추가하세요
+    # 여기서 cogs를 불러옵니다.
     await bot.load_extension('cogs.fun')
     await bot.load_extension('cogs.timer')
     
-    await bot.tree.sync()
+    # 이 부분이 가장 중요합니다! 명령어를 디스코드 서버에 동기화합니다.
+    try:
+        synced = await bot.tree.sync()
+        print(f"{len(synced)}개의 명령어가 동기화되었습니다.")
+    except Exception as e:
+        print(f"동기화 오류: {e}")
+        
     print(f'{bot.user} 소라빵이 가동되었습니다.')
 
 bot.run(os.getenv('DISCORD_TOKEN'))
