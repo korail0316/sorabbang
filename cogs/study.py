@@ -2,18 +2,22 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
+# 1. 유저 선택 메뉴를 위한 클래스 별도 정의
+class MemberSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(placeholder="함께 공부할 멤버를 선택하세요!", min_values=1, max_values=5)
+
+    async def callback(self, interaction: discord.Interaction):
+        user_names = ", ".join([user.mention for user in self.values])
+        await interaction.response.send_message(f"공부 메이트: {user_names}\n타이머를 시작합니다! 50분 동안 집중하세요!", ephemeral=False)
+
+# 2. View 클래스에 위에서 만든 Select를 추가
 class StudyTimerView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=60)
+        self.add_item(MemberSelect())
 
-    @discord.ui.user_select(placeholder="함께 공부할 멤버를 선택하세요!", min_values=1, max_values=5)
-    async def select_members(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
-        selected_users = select.values
-        user_names = ", ".join([user.mention for user in selected_users])
-        
-        await interaction.response.send_message(f"멤버: {user_names}\n타이머를 시작합니다! 50분 동안 집중하세요!", ephemeral=False)
-        # 여기에 추후 타이머 로직(비동기 sleep 등)을 추가할 예정입니다.
-
+# 3. Cog 클래스
 class Study(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
