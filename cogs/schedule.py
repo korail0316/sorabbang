@@ -1,38 +1,34 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont # 폰트 사용 추천
 import io
 import json
 import os
 
-# 현재 파일(schedule.py)의 위치를 기준으로 같은 폴더에 저장
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "schedule_data.json")
-
-def load_schedules():
-    if not os.path.exists(DATA_FILE): return []
-    with open(DATA_FILE, "r", encoding="utf-8") as f: return json.load(f)
-
-def save_schedule(new_entry):
-    data = load_schedules()
-    data.append(new_entry)
-    with open(DATA_FILE, "w", encoding="utf-8") as f: json.dump(data, f, indent=4, ensure_ascii=False)
+TEMPLATE_PATH = os.path.join(BASE_DIR, "calendar_template.png") # 배경 이미지 경로
 
 class Schedule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    def create_calendar_image(self):
-        schedules = load_schedules()
-        img = Image.new('RGB', (800, 600), color=(255, 255, 255))
+    def draw_calendar(self):
+        # 1. 배경 이미지 로드 (없으면 흰색 바탕 생성)
+        if os.path.exists(TEMPLATE_PATH):
+            img = Image.open(TEMPLATE_PATH)
+        else:
+            img = Image.new('RGB', (800, 600), color=(255, 255, 255))
+        
         d = ImageDraw.Draw(img)
+        data = self.load_schedules()
         
-        d.text((50, 30), "STUDY CAFE SCHEDULE", fill=(0, 0, 0))
-        
+        # 2. 데이터 시각화
         y_offset = 100
-        for item in schedules:
-            d.text((50, y_offset), f"• {item['date']} | {item['content']}", fill=(0, 0, 0))
+        for item in data:
+            # 배경 위에 텍스트 입력
+            d.text((50, y_offset), f"{item['date']} - {item['content']}", fill=(0, 0, 0))
             y_offset += 40
             
         buf = io.BytesIO()
@@ -40,17 +36,24 @@ class Schedule(commands.Cog):
         buf.seek(0)
         return buf
 
-    @app_commands.command(name="일정추가", description="일정을 등록합니다.")
-    async def add_schedule(self, interaction: discord.Interaction, date: str, content: str):
-        save_schedule({"date": date, "content": content})
-        await interaction.response.send_message(f"✅ {date} 일정이 저장되었습니다!", ephemeral=True)
+    def load_schedules(self):
+        if not os.path.exists(DATA_FILE): return []
+        with open(DATA_FILE, "r", encoding="utf-8") as f: return json.load(f)
 
-    @app_commands.command(name="캘린더", description="저장된 일정을 이미지로 확인합니다.")
+    @app_commands.command(name="일정추가", description="대표 캘린더에 일정을 추가합니다.")
+    async def add_schedule(self, interaction: discord.Interaction, date: str, content: str):
+        data = self.load_schedules()
+        data.append({"date": date, "content": content})
+        with open(DATA_FILE, "w", encoding="utf-8") as f: json.dump(data, f, indent=4, ensure_ascii=False)
+        
+        await interaction.response.send_message(f"✅ {date} 일정이 캘린더에 추가되었습니다!", ephemeral=True)
+
+    @app_commands.command(name="캘린더", description="대표 캘린더를 확인합니다.")
     async def view_calendar(self, interaction: discord.Interaction):
-        image_buf = self.create_calendar_image()
+        image_buf = self.draw_calendar()
         file = discord.File(fp=image_buf, filename="calendar.png")
         
-        embed = discord.Embed(title="📅 이번 주 스터디 일정", color=discord.Color.blue())
+        embed = discord.Embed(title="📅 스터디 대표 캘린더", color=discord.Color.blue())
         embed.set_image(url="attachment://calendar.png")
         await interaction.response.send_message(embed=embed, file=file)
 
