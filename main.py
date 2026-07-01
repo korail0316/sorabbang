@@ -20,5 +20,11 @@ async def main():
         await load_extensions()
         await bot.start(os.getenv("DISCORD_TOKEN"))
 
+@bot.event
+async def on_ready():
+    # 이 코드가 중요합니다. 기존에 등록된 모든 명령어를 지우고 지금 코드에 있는 것만 남깁니다.
+    await bot.tree.sync() 
+    print(f'{bot.user}으로 로그인 및 명령어 동기화 완료!')
+
 if __name__ == '__main__':
     asyncio.run(main())
