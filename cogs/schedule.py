@@ -3,68 +3,59 @@ from discord.ext import commands
 from discord import app_commands
 import datetime
 
+class CalendarView(discord.ui.View):
+    def __init__(self, current_date):
+        super().__init__(timeout=None)
+        self.current_date = current_date
+
+    def get_calendar_embed(self, guild):
+        # 해당 달의 이벤트만 필터링
+        events = [e for e in guild.scheduled_events if e.start_time.month == self.current_date.month]
+        
+        embed = discord.Embed(
+            title=f"📅 {self.current_date.year}년 {self.current_date.month}월 스터디 일정",
+            description="서버의 공식 일정입니다. 참여를 원하시면 이벤트를 클릭하세요.",
+            color=discord.Color.blue()
+        )
+        
+        if not events:
+            embed.description = "이번 달에 등록된 일정이 없습니다."
+        else:
+            for event in sorted(events, key=lambda e: e.start_time):
+                embed.add_field(name=f"• {event.name}", value=f"일시: {event.start_time.strftime('%d일 %H:%M')}", inline=False)
+        return embed
+
+    @discord.ui.button(label="◀ 이전 달", style=discord.ButtonStyle.secondary)
+    async def prev_month(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_date = (self.current_date.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)
+        await interaction.response.edit_message(embed=self.get_calendar_embed(interaction.guild), view=self)
+
+    @discord.ui.button(label="다음 달 ▶", style=discord.ButtonStyle.secondary)
+    async def next_month(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_date = (self.current_date.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+        await interaction.response.edit_message(embed=self.get_calendar_embed(interaction.guild), view=self)
+
 class Schedule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="일정생성", description="스터디 이벤트를 생성하여 대표 캘린더에 등록합니다.")
-    @app_commands.describe(
-        name="일정 제목",
-        start_time="시작 시간 (예: 2026-07-05 14:00)",
-        description="상세 내용"
-    )
+    @app_commands.command(name="캘린더생성", description="관리자 전용: 공용 캘린더 메시지를 생성합니다.")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def create_calendar(self, interaction: discord.Interaction):
+        view = CalendarView(datetime.date.today())
+        await interaction.response.send_message(embed=view.get_calendar_embed(interaction.guild), view=view)
+
+    @app_commands.command(name="일정생성", description="스터디 이벤트를 생성합니다.")
     async def create_event(self, interaction: discord.Interaction, name: str, start_time: str, description: str):
         try:
-            # 시간 형식 파싱 (현재 연도 2026을 기준으로 함)
             start_dt = datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M")
-            
-            # 디스코드 서버 이벤트 생성
-            event = await interaction.guild.create_scheduled_event(
-                name=name,
-                start_time=start_dt,
-                description=description,
-                entity_type=discord.EntityType.external,
-                location="스터디 카페 음성 채널",
-                privacy_level=discord.PrivacyLevel.guild_only
+            await interaction.guild.create_scheduled_event(
+                name=name, start_time=start_dt, description=description,
+                entity_type=discord.EntityType.external, location="스터디 카페", privacy_level=discord.PrivacyLevel.guild_only
             )
-            
-            await interaction.response.send_message(
-                f"✅ **{name}** 일정이 성공적으로 생성되었습니다!\n서버 상단 이벤트 탭에서 확인 가능합니다.", 
-                ephemeral=True
-            )
-        except ValueError:
-            await interaction.response.send_message(
-                "❌ 시간 형식이 잘못되었습니다. `YYYY-MM-DD HH:MM` 형식(예: 2026-07-05 14:00)으로 입력해주세요.", 
-                ephemeral=True
-            )
-
-    @app_commands.command(name="일정확인", description="서버의 모든 스터디 일정을 모아봅니다.")
-    async def view_all_events(self, interaction: discord.Interaction):
-        # 현재 서버의 모든 예정된 이벤트 불러오기
-        events = interaction.guild.scheduled_events
-        
-        if not events:
-            await interaction.response.send_message("현재 등록된 스터디 일정이 없습니다.", ephemeral=True)
-            return
-
-        # 시간을 기준으로 정렬
-        sorted_events = sorted(events, key=lambda e: e.start_time)
-
-        embed = discord.Embed(
-            title="📅 서버 대표 스터디 캘린더", 
-            description="서버에 등록된 예정된 스터디 일정입니다.",
-            color=discord.Color.green()
-        )
-        
-        for event in sorted_events:
-            start_time = event.start_time.strftime("%m-%d %H:%M")
-            embed.add_field(
-                name=f"• {event.name}", 
-                value=f"시작: {start_time}\n[이벤트 바로가기](https://discord.com/events/{event.guild.id}/{event.id})", 
-                inline=False
-            )
-        
-        await interaction.response.send_message(embed=embed)
+            await interaction.response.send_message("✅ 일정이 추가되었습니다! 캘린더를 확인하세요.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"오류 발생: {e}", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Schedule(bot))
