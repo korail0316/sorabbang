@@ -6,7 +6,9 @@ import io
 import json
 import os
 
-DATA_FILE = "schedule_data.json"
+# 현재 파일(schedule.py)의 위치를 기준으로 같은 폴더에 저장
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "schedule_data.json")
 
 def load_schedules():
     if not os.path.exists(DATA_FILE): return []
