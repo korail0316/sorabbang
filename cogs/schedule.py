@@ -1,29 +1,41 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import json
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 class Schedule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # 1. 일정 추가 명령어
-    @app_commands.command(name="일정추가", description="새로운 공부 일정을 추가합니다.")
-    @app_commands.describe(date="날짜 (예: 07-05)", content="일정 내용")
-    async def add_schedule(self, interaction: discord.Interaction, date: str, content: str):
-        # 여기에 데이터를 저장하는 로직을 나중에 붙일 거예요
-        await interaction.response.send_message(f"✅ {date}에 '{content}' 일정이 추가되었습니다!", ephemeral=True)
+    def create_calendar_image(self, schedules):
+        # 1. 빈 이미지 생성 (배경)
+        img = Image.new('RGB', (800, 600), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        
+        # 2. 텍스트 그리기 (간단한 예시)
+        d.text((50, 50), "STUDY CALENDAR", fill=(0, 0, 0))
+        for i, schedule in enumerate(schedules):
+            d.text((50, 100 + (i * 30)), f"- {schedule}", fill=(0, 0, 0))
+            
+        # 3. 메모리에 저장
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return buf
 
-    # 2. 일정 보기 명령어
-    @app_commands.command(name="일정보기", description="현재 등록된 스터디 일정을 확인합니다.")
-    async def view_schedule(self, interaction: discord.Interaction):
-        # 임베드를 통해 깔끔하게 출력
-        embed = discord.Embed(
-            title="📅 스터디 카페 일정",
-            description="현재 등록된 일정이 없습니다.",
-            color=discord.Color.purple()
-        )
-        await interaction.response.send_message(embed=embed)
+    @app_commands.command(name="캘린더", description="시각적 캘린더 이미지를 보여줍니다.")
+    async def view_calendar(self, interaction: discord.Interaction):
+        # 예시 일정 (나중에 DB에서 가져오도록 수정 예정)
+        schedules = ["07-05: 중간고사 준비", "07-10: 그룹 스터디"]
+        
+        image_buf = self.create_calendar_image(schedules)
+        file = discord.File(fp=image_buf, filename="calendar.png")
+        
+        embed = discord.Embed(title="📅 이번 달 스케줄", color=discord.Color.blue())
+        embed.set_image(url="attachment://calendar.png")
+        
+        await interaction.response.send_message(embed=embed, file=file)
 
 async def setup(bot):
     await bot.add_cog(Schedule(bot))
