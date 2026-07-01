@@ -3,24 +3,18 @@ from discord.ext import commands
 from discord import app_commands
 import datetime
 
-# 1. 날짜 입력 모달 (날짜별 상세 일정 확인)
+# 1. 상세 일정 조회용 모달
 class DateDetailModal(discord.ui.Modal, title="날짜별 상세 일정 확인"):
     def __init__(self, guild):
         super().__init__()
         self.guild = guild
         
-    day_input = discord.ui.TextInput(
-        label="확인할 날짜 (일)",
-        placeholder="예: 05",
-        min_length=1,
-        max_length=2
-    )
+    day_input = discord.ui.TextInput(label="확인할 날짜 (일)", placeholder="예: 05", min_length=1, max_length=2)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
             day = int(self.day_input.value)
             events = [e for e in self.guild.scheduled_events if e.start_time.day == day]
-            
             if not events:
                 await interaction.response.send_message(f"📅 {day}일에는 등록된 일정이 없습니다.", ephemeral=True)
             else:
@@ -29,7 +23,7 @@ class DateDetailModal(discord.ui.Modal, title="날짜별 상세 일정 확인"):
         except ValueError:
             await interaction.response.send_message("❌ 숫자(일)만 정확히 입력해주세요.", ephemeral=True)
 
-# 2. 캘린더 인터페이스 (달 이동 및 조회)
+# 2. 캘린더 보기 뷰 (이전/다음 달 이동)
 class CalendarView(discord.ui.View):
     def __init__(self, current_date):
         super().__init__(timeout=None)
@@ -37,13 +31,9 @@ class CalendarView(discord.ui.View):
 
     def get_embed(self, guild):
         events = [e for e in guild.scheduled_events if e.start_time.month == self.current_date.month and e.start_time.year == self.current_date.year]
-        embed = discord.Embed(
-            title=f"📅 {self.current_date.year}년 {self.current_date.month}월 서버 공용 캘린더",
-            description="전체 일정을 확인하세요. '상세 정보 확인' 버튼을 눌러 날짜별 일정을 조회할 수 있습니다.",
-            color=discord.Color.teal()
-        )
+        embed = discord.Embed(title=f"📅 {self.current_date.year}년 {self.current_date.month}월 서버 공용 캘린더", color=discord.Color.teal())
         if not events:
-            embed.description = "이번 달에 등록된 일정이 없습니다."
+            embed.description = "등록된 일정이 없습니다."
         else:
             for e in sorted(events, key=lambda x: x.start_time):
                 embed.add_field(name=f"• {e.start_time.day}일: {e.name}", value=f"시간: {e.start_time.strftime('%H:%M')}", inline=False)
@@ -67,13 +57,13 @@ class CalendarView(discord.ui.View):
         self.current_date = datetime.date(year, month, 1)
         await interaction.response.edit_message(embed=self.get_embed(interaction.guild), view=self)
 
-# 3. 일정 등록 모달 및 멤버 선택
+# 3. 일정 등록 모달 및 멤버 선택 뷰
 class MemberSelectView(discord.ui.View):
     def __init__(self, data):
         super().__init__(timeout=60)
         self.data = data
 
-    @discord.ui.user_select(placeholder="함께할 멤버를 선택하세요!", min_values=1, max_values=10)
+    @discord.ui.select(cls=discord.ui.UserSelect, placeholder="함께할 멤버를 선택하세요!", min_values=1, max_values=10)
     async def select_members(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
         members = ", ".join([user.mention for user in select.values])
         start_dt = datetime.datetime.strptime(f"{self.data['date']} {self.data['time']}", "%Y-%m-%d %H:%M")
@@ -93,7 +83,7 @@ class EventModal(discord.ui.Modal, title="새 일정 등록"):
         data = {'name': self.name.value, 'date': self.date_ymd.value, 'time': self.time_hm.value, 'desc': self.desc.value}
         await interaction.response.send_message("함께할 멤버를 선택해주세요:", view=MemberSelectView(data), ephemeral=True)
 
-# 4. Cog 클래스
+# 4. Cog 메인
 class Schedule(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
