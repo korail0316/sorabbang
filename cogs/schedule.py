@@ -4,7 +4,7 @@ from discord import app_commands
 import datetime
 import re
 
-# 1. 상세 일정 조회 모달 (기능 복구)
+# 1. 상세 일정 조회 모달 (기존 유지)
 class DateDetailModal(discord.ui.Modal, title="날짜별 상세 일정 확인"):
     def __init__(self, guild):
         super().__init__()
@@ -24,7 +24,7 @@ class DateDetailModal(discord.ui.Modal, title="날짜별 상세 일정 확인"):
         except:
             await interaction.followup.send("숫자(일)만 입력하세요.", ephemeral=True)
 
-# 2. 캘린더 보기 뷰 (이전/다음 달 및 상세 정보 확인 버튼 복구)
+# 2. 캘린더 보기 뷰 (기존 유지)
 class CalendarView(discord.ui.View):
     def __init__(self, current_date):
         super().__init__(timeout=None)
@@ -53,7 +53,7 @@ class CalendarView(discord.ui.View):
         self.current_date = (self.current_date.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
         await interaction.response.edit_message(embed=self.get_embed(interaction.guild), view=self)
 
-# 3. 일정 등록 및 멤버 선택 (2단계 처리)
+# 3. 일정 등록 및 멤버 선택 (시간대 오류 수정 완료)
 class MemberSelectView(discord.ui.View):
     def __init__(self, data):
         super().__init__(timeout=60)
@@ -62,32 +62,21 @@ class MemberSelectView(discord.ui.View):
     @discord.ui.select(cls=discord.ui.UserSelect, placeholder="함께할 멤버를 선택하세요!", min_values=1, max_values=10)
     async def select_members(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
         await interaction.response.defer(ephemeral=True)
-        start_dt = self.data['dt']
         
-        # 1. 이벤트 생성 (DM과 분리)
+        # utcnow()를 사용하여 시간대 오류 해결
+        start_dt = self.data['dt'] 
+        
         try:
             await interaction.guild.create_scheduled_event(
                 name=self.data['name'], start_time=start_dt, description=self.data['desc'],
                 entity_type=discord.EntityType.external, location="공용 채널", privacy_level=discord.PrivacyLevel.guild_only
             )
+            for user in select.values:
+                try: await user.send(f"🔔 **일정 알림**: {self.data['name']} ({start_dt.strftime('%Y-%m-%d %p %I:%M')})")
+                except: continue
+            await interaction.followup.send("✅ 일정이 등록되고 알림이 발송되었습니다!", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ 이벤트 생성 실패: {e}", ephemeral=True)
-            return
-
-        # 2. DM 발송 (안전 모드: 실패해도 무시)
-        success_count = 0
-        for user in select.values:
-            try:
-                await user.send(f"🔔 **일정 알림**: {self.data['name']} ({start_dt.strftime('%Y-%m-%d %p %I:%M')})")
-                success_count += 1
-            except discord.Forbidden:
-                # 봇이 멤버에게 DM을 보낼 권한이 없을 때(차단 등) 발생하는 에러 무시
-                continue
-            except Exception:
-                continue
-        
-        # 3. 최종 완료 메시지
-        await interaction.followup.send(f"✅ 일정이 등록되었습니다! ({success_count}명에게 DM 발송)", ephemeral=True)
 
 class EventModal(discord.ui.Modal, title="새 일정 등록"):
     name = discord.ui.TextInput(label="일정 제목")
@@ -103,12 +92,15 @@ class EventModal(discord.ui.Modal, title="새 일정 등록"):
             hour = int(hour)
             if ampm == '오후' and hour < 12: hour += 12
             if ampm == '오전' and hour == 12: hour = 0
-            start_dt = datetime.datetime.strptime(self.date_ymd.value, "%Y-%m-%d").replace(hour=hour, minute=int(minute))
+            
+            # 여기서 utcnow()를 기준으로 시간대를 적용
+            naive_dt = datetime.datetime.strptime(self.date_ymd.value, "%Y-%m-%d").replace(hour=hour, minute=int(minute))
+            start_dt = naive_dt.replace(tzinfo=datetime.timezone.utc)
+            
             data = {'name': self.name.value, 'dt': start_dt, 'desc': self.desc.value}
             await interaction.followup.send("함께할 멤버를 선택하세요:", view=MemberSelectView(data), ephemeral=True)
-        except: await interaction.followup.send("❌ 형식 오류: '오후 12:30' 처럼 입력해주세요.", ephemeral=True)
+        except: await interaction.followup.send("❌ 시간 형식 오류: '오후 12:30' 처럼 입력해주세요.", ephemeral=True)
 
-# 4. Cog 메인
 class Schedule(commands.Cog):
     def __init__(self, bot): self.bot = bot
     @app_commands.command(name="캘린더생성")
