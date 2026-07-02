@@ -63,14 +63,31 @@ class MemberSelectView(discord.ui.View):
     async def select_members(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
         await interaction.response.defer(ephemeral=True)
         start_dt = self.data['dt']
-        await interaction.guild.create_scheduled_event(
-            name=self.data['name'], start_time=start_dt, description=self.data['desc'],
-            entity_type=discord.EntityType.external, location="공용 채널", privacy_level=discord.PrivacyLevel.guild_only
-        )
+        
+        # 1. 이벤트 생성 (DM과 분리)
+        try:
+            await interaction.guild.create_scheduled_event(
+                name=self.data['name'], start_time=start_dt, description=self.data['desc'],
+                entity_type=discord.EntityType.external, location="공용 채널", privacy_level=discord.PrivacyLevel.guild_only
+            )
+        except Exception as e:
+            await interaction.followup.send(f"❌ 이벤트 생성 실패: {e}", ephemeral=True)
+            return
+
+        # 2. DM 발송 (안전 모드: 실패해도 무시)
+        success_count = 0
         for user in select.values:
-            try: await user.send(f"🔔 **일정 알림**: {self.data['name']} ({start_dt.strftime('%Y-%m-%d %p %I:%M')})")
-            except: continue
-        await interaction.followup.send("✅ 일정이 등록되고 알림이 발송되었습니다!", ephemeral=True)
+            try:
+                await user.send(f"🔔 **일정 알림**: {self.data['name']} ({start_dt.strftime('%Y-%m-%d %p %I:%M')})")
+                success_count += 1
+            except discord.Forbidden:
+                # 봇이 멤버에게 DM을 보낼 권한이 없을 때(차단 등) 발생하는 에러 무시
+                continue
+            except Exception:
+                continue
+        
+        # 3. 최종 완료 메시지
+        await interaction.followup.send(f"✅ 일정이 등록되었습니다! ({success_count}명에게 DM 발송)", ephemeral=True)
 
 class EventModal(discord.ui.Modal, title="새 일정 등록"):
     name = discord.ui.TextInput(label="일정 제목")
