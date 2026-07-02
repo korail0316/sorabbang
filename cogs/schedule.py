@@ -63,13 +63,19 @@ class MemberSelectView(discord.ui.View):
     async def select_members(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
         await interaction.response.defer(ephemeral=True)
         
-        # utcnow()를 사용하여 시간대 오류 해결
-        start_dt = self.data['dt'] 
+        start_dt = self.data['dt']
+        # external 이벤트는 end_time이 필수 (시작 시간 + 1시간으로 설정)
+        end_dt = start_dt + datetime.timedelta(hours=1)
         
         try:
             await interaction.guild.create_scheduled_event(
-                name=self.data['name'], start_time=start_dt, description=self.data['desc'],
-                entity_type=discord.EntityType.external, location="공용 채널", privacy_level=discord.PrivacyLevel.guild_only
+                name=self.data['name'], 
+                start_time=start_dt, 
+                end_time=end_dt,  # 종료 시간 설정 추가
+                description=self.data['desc'],
+                entity_type=discord.EntityType.external, 
+                location="공용 채널", 
+                privacy_level=discord.PrivacyLevel.guild_only
             )
             for user in select.values:
                 try: await user.send(f"🔔 **일정 알림**: {self.data['name']} ({start_dt.strftime('%Y-%m-%d %p %I:%M')})")
@@ -93,7 +99,6 @@ class EventModal(discord.ui.Modal, title="새 일정 등록"):
             if ampm == '오후' and hour < 12: hour += 12
             if ampm == '오전' and hour == 12: hour = 0
             
-            # 여기서 utcnow()를 기준으로 시간대를 적용
             naive_dt = datetime.datetime.strptime(self.date_ymd.value, "%Y-%m-%d").replace(hour=hour, minute=int(minute))
             start_dt = naive_dt.replace(tzinfo=datetime.timezone.utc)
             
