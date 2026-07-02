@@ -57,10 +57,10 @@ class CalendarView(discord.ui.View):
 
 # 3. 일정 등록 로직
 class MemberSelectView(discord.ui.View):
-    def __init__(self, data, original_interaction):
+    def __init__(self, data, calendar_msg):
         super().__init__(timeout=60)
         self.data = data
-        self.original_interaction = original_interaction
+        self.calendar_msg = calendar_msg
 
     @discord.ui.select(cls=discord.ui.UserSelect, placeholder="함께할 멤버를 선택하세요!", min_values=1, max_values=10)
     async def select_members(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
@@ -85,21 +85,19 @@ class MemberSelectView(discord.ui.View):
             except: 
                 continue
         
-        # 3. 서버 이벤트 데이터 강제 갱신 후 캘린더 업데이트
+        # 3. 서버 데이터 새로고침
         await interaction.guild.fetch_scheduled_events() 
-        new_view = CalendarView(datetime.date(start_dt.year, start_dt.month, 1))
+                
+        # [핵심] 캘린더 갱신: original_interaction이 아니라 calendar_msg를 직접 edit
+        new_view = CalendarView(datetime.date(self.data['dt'].year, self.data['dt'].month, 1))
+        await self.calendar_msg.edit(embed=new_view.get_embed(interaction.guild), view=new_view)
         
-        # 캘린더 메시지 수정
-        await self.original_interaction.edit_original_response(
-            embed=new_view.get_embed(interaction.guild), 
-            view=new_view
-        )
-        
-        await interaction.followup.send("✅ 일정이 등록되고 멤버들에게 DM이 발송되었습니다!", ephemeral=True)
+        await interaction.followup.send("✅ 캘린더가 즉시 업데이트되었습니다!", ephemeral=True)
 class EventModal(discord.ui.Modal, title="새 일정 등록"):
-    def __init__(self, original_interaction):
+    def __init__(self, original_interaction, calendar_msg):
         super().__init__()
         self.original_interaction = original_interaction
+        self.calendar_msg = calendar_msg
     name = discord.ui.TextInput(label="일정 제목")
     date_ymd = discord.ui.TextInput(label="날짜 (YYYY-MM-DD)", placeholder="2026-07-02")
     time_str = discord.ui.TextInput(label="시간 (오전/오후 HH:MM)", placeholder="오후 12:30")
@@ -114,7 +112,7 @@ class EventModal(discord.ui.Modal, title="새 일정 등록"):
             if ampm == '오전' and hour == 12: hour = 0
             start_dt = datetime.datetime.strptime(self.date_ymd.value, "%Y-%m-%d").replace(hour=hour, minute=int(minute), tzinfo=datetime.timezone.utc)
             data = {'name': self.name.value, 'dt': start_dt, 'desc': self.desc.value}
-            await interaction.followup.send("함께할 멤버 선택:", view=MemberSelectView(data, self.original_interaction), ephemeral=True)
+            await interaction.followup.send("함께할 멤버 선택:", view=MemberSelectView(data, self.calendar_msg), ephemeral=True)
         except: await interaction.followup.send("❌ 시간 형식 오류: '오후 12:30' 처럼 입력해주세요.", ephemeral=True)
 
 class Schedule(commands.Cog):
@@ -122,9 +120,17 @@ class Schedule(commands.Cog):
     @app_commands.command(name="캘린더생성")
     async def create_calendar(self, interaction: discord.Interaction):
         view = CalendarView(datetime.date.today())
+        # 응답을 보내고, 그 응답 메시지 객체를 가져옵니다.
         await interaction.response.send_message(embed=view.get_embed(interaction.guild), view=view)
+        # 생성된 메시지를 가져옵니다.
+        msg = await interaction.original_response()
+        # 이 msg 객체를 일정등록 모달을 열 때 함께 넘겨줘야 합니다.
+        self.calendar_message = msg 
+
     @app_commands.command(name="일정등록")
     async def add_event(self, interaction: discord.Interaction): 
-        await interaction.response.send_modal(EventModal(interaction))
+        # 캘린더 메시지가 생성되어 있는지 확인 후 모달 호출
+        calendar_msg = getattr(self, 'calendar_message', None)
+        await interaction.response.send_modal(EventModal(interaction, calendar_msg))
 
 async def setup(bot): await bot.add_cog(Schedule(bot))
