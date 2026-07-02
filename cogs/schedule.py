@@ -67,23 +67,35 @@ class MemberSelectView(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         start_dt = self.data['dt']
         
-        # 이벤트 생성
-        event = await interaction.guild.create_scheduled_event(
-            name=self.data['name'], start_time=start_dt, end_time=start_dt + datetime.timedelta(hours=1),
-            description=self.data['desc'], entity_type=discord.EntityType.external, 
-            location="공용 채널", privacy_level=discord.PrivacyLevel.guild_only
+        # 1. 이벤트 생성
+        await interaction.guild.create_scheduled_event(
+            name=self.data['name'], 
+            start_time=start_dt, 
+            end_time=start_dt + datetime.timedelta(hours=1),
+            description=self.data['desc'], 
+            entity_type=discord.EntityType.external, 
+            location="공용 채널", 
+            privacy_level=discord.PrivacyLevel.guild_only
         )
         
-        # DM 발송
+        # 2. DM 발송 (이 부분이 빠져 있었습니다)
         for user in select.values:
-            try: await user.send(f"🔔 **새 일정 알림**: {self.data['name']} ({start_dt.strftime('%Y-%m-%d %p %I:%M')})")
-            except: continue
+            try: 
+                await user.send(f"🔔 **새 일정 알림**: {self.data['name']}\n일시: {start_dt.strftime('%Y-%m-%d %p %I:%M')}\n참여자로 등록되었습니다!")
+            except: 
+                continue
         
-        await interaction.followup.send("✅ 일정이 등록되었습니다!", ephemeral=True)
-        # 캘린더 자동 갱신
+        # 3. 서버 이벤트 데이터 강제 갱신 후 캘린더 업데이트
+        await interaction.guild.fetch_scheduled_events() 
         new_view = CalendarView(datetime.date(start_dt.year, start_dt.month, 1))
-        await self.original_interaction.edit_original_response(embed=new_view.get_embed(interaction.guild), view=new_view)
-
+        
+        # 캘린더 메시지 수정
+        await self.original_interaction.edit_original_response(
+            embed=new_view.get_embed(interaction.guild), 
+            view=new_view
+        )
+        
+        await interaction.followup.send("✅ 일정이 등록되고 멤버들에게 DM이 발송되었습니다!", ephemeral=True)
 class EventModal(discord.ui.Modal, title="새 일정 등록"):
     def __init__(self, original_interaction):
         super().__init__()
