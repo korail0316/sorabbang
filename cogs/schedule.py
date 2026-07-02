@@ -32,12 +32,14 @@ class CalendarView(discord.ui.View):
 
     def get_embed(self, guild):
         target_year, target_month = self.current_date.year, self.current_date.month
-        events = [e for e in guild.scheduled_events if e.start_time.astimezone(datetime.timezone.utc).year == target_year and e.start_time.astimezone(datetime.timezone.utc).month == target_month]
-        embed = discord.Embed(title=f"📅 {target_year}년 {target_month}월 공용 캘린더", color=discord.Color.teal())
+        # KST 기준으로 필터링
+        events = [e for e in guild.scheduled_events if e.start_time.astimezone(KST).year == target_year and e.start_time.astimezone(KST).month == target_month]
+        embed = discord.Embed(title=f"📅 {target_year}년 {target_month}월 공용 캘린더 (KST)", color=discord.Color.teal())
+        
         if not events: embed.description = "등록된 일정이 없습니다."
         else:
             for e in sorted(events, key=lambda x: x.start_time):
-                kst = e.start_time + datetime.timedelta(hours=9)
+                kst = e.start_time.astimezone(KST)
                 embed.add_field(name=f"• {kst.day}일: {e.name}", value=f"시간: {kst.strftime('%p %I:%M')}", inline=False)
         return embed
 
@@ -69,13 +71,9 @@ class MemberSelectView(discord.ui.View):
         
         # 1. 이벤트 생성
         await interaction.guild.create_scheduled_event(
-            name=self.data['name'], 
-            start_time=start_dt, 
-            end_time=start_dt + datetime.timedelta(hours=1),
-            description=self.data['desc'], 
-            entity_type=discord.EntityType.external, 
-            location="공용 채널", 
-            privacy_level=discord.PrivacyLevel.guild_only
+            name=self.data['name'], start_time=start_dt, end_time=start_dt + datetime.timedelta(hours=1),
+            description=self.data['desc'], entity_type=discord.EntityType.external, 
+            location="공용 채널", privacy_level=discord.PrivacyLevel.guild_only
         )
         
         # 2. DM 발송 (이 부분이 빠져 있었습니다)
@@ -93,10 +91,10 @@ class MemberSelectView(discord.ui.View):
         await self.calendar_msg.edit(embed=new_view.get_embed(interaction.guild), view=new_view)
         
         await interaction.followup.send("✅ 캘린더가 즉시 업데이트되었습니다!", ephemeral=True)
+        
 class EventModal(discord.ui.Modal, title="새 일정 등록"):
-    def __init__(self, original_interaction, calendar_msg):
+    def __init__(self, calendar_msg):
         super().__init__()
-        self.original_interaction = original_interaction
         self.calendar_msg = calendar_msg
     name = discord.ui.TextInput(label="일정 제목")
     date_ymd = discord.ui.TextInput(label="날짜 (YYYY-MM-DD)", placeholder="2026-07-02")
@@ -110,7 +108,9 @@ class EventModal(discord.ui.Modal, title="새 일정 등록"):
             ampm, hour, minute = time_match.groups()
             hour = int(hour) + (12 if ampm == '오후' and int(hour) < 12 else 0)
             if ampm == '오전' and hour == 12: hour = 0
-            start_dt = datetime.datetime.strptime(self.date_ymd.value, "%Y-%m-%d").replace(hour=hour, minute=int(minute), tzinfo=datetime.timezone.utc)
+            
+            # 입력값을 바로 KST로 생성
+            start_dt = datetime.datetime.strptime(self.date_ymd.value, "%Y-%m-%d").replace(hour=hour, minute=int(minute), tzinfo=KST)
             data = {'name': self.name.value, 'dt': start_dt, 'desc': self.desc.value}
             await interaction.followup.send("함께할 멤버 선택:", view=MemberSelectView(data, self.calendar_msg), ephemeral=True)
         except: await interaction.followup.send("❌ 시간 형식 오류: '오후 12:30' 처럼 입력해주세요.", ephemeral=True)
