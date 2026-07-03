@@ -118,6 +118,18 @@ class Schedule(commands.Cog):
     def cog_unload(self):
         self.sync_calendar.cancel() # 봇 종료 시 동기화 정지
 
+    @commands.Cog.listener()
+    async def on_scheduled_event_delete(self, event: discord.ScheduledEvent):
+        # 캘린더 메시지가 존재할 때만 갱신
+        if self.calendar_message:
+            try:
+                # 삭제된 이벤트를 제외하고 캘린더 갱신
+                await event.guild.fetch_scheduled_events() # 최신 목록 가져오기
+                new_view = CalendarView(datetime.date(datetime.datetime.now(KST).year, datetime.datetime.now(KST).month, 1))
+                await self.calendar_message.edit(embed=new_view.get_embed(event.guild), view=new_view)
+            except Exception as e:
+                print(f"이벤트 삭제 후 캘린더 갱신 실패: {e}")
+
     # [핵심] 10분마다 실행되는 자동 동기화 태스크
     @tasks.loop(minutes=10)
     async def sync_calendar(self):
