@@ -113,7 +113,29 @@ class Schedule(commands.Cog):
     def __init__(self, bot): 
         self.bot = bot
         self.calendar_message = None
+        self.sync_calendar.start()
+        
+    def cog_unload(self):
+        self.sync_calendar.cancel() # 봇 종료 시 동기화 정지
 
+    # [핵심] 10분마다 실행되는 자동 동기화 태스크
+    @tasks.loop(minutes=10)
+    async def sync_calendar(self):
+        if not self.calendar_message:
+            return
+        try:
+            # 캘린더 메시지를 찾아서 최신 상태로 강제 수정
+            guild = self.calendar_message.guild
+            await guild.fetch_scheduled_events()
+            new_view = CalendarView(datetime.date(datetime.datetime.now(KST).year, datetime.datetime.now(KST).month, 1))
+            await self.calendar_message.edit(embed=new_view.get_embed(guild), view=new_view)
+        except Exception as e:
+            print(f"자동 동기화 중 오류 발생: {e}")
+
+    @sync_calendar.before_loop
+    async def before_sync(self):
+        await self.bot.wait_until_ready()
+        
     @app_commands.command(name="캘린더생성")
     async def create_calendar(self, interaction: discord.Interaction):
         view = CalendarView(datetime.date.today())
