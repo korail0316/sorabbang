@@ -25,26 +25,13 @@ class AutoMusic(commands.Cog):
             if voice_client and len(before.channel.members) == 1:
                 await voice_client.disconnect()
 
-    async def play_music(self, vc):
-        # yt_dlp 설정을 최소화하여 차단 방지
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'quiet': True,
-            'no_warnings': True,
-            'cookiefile': 'cookies.txt',
-        }
+async def play_music(self, vc):
+        # yt-dlp 추출 과정 전체를 삭제하고 파일만 재생
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(self.youtube_url, download=False)
-                # 혹시 info가 dict가 아니라 None일 수 있으니 체크
-                if info:
-                    url = info.get('url')
-                    vc.play(discord.FFmpegPCMAudio(url, before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', options='-vn'))
-                    print("[성공] 음악 재생 시작!")
-                else:
-                    print("[오류] 정보 추출 실패!")
+            vc.play(discord.FFmpegPCMAudio('music.mp3'))
+            print("[성공] 로컬 파일 재생 시작!")
         except Exception as e:
-            print(f"[상세 오류] {e}")
+            print(f"[재생 오류] {e}")
 
 async def setup(bot):
     await bot.add_cog(AutoMusic(bot))
