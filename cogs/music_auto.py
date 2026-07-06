@@ -31,16 +31,20 @@ class AutoMusic(commands.Cog):
             'format': 'bestaudio/best',
             'quiet': True,
             'no_warnings': True,
+            'cookiefile': 'cookies.txt',
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(self.youtube_url, download=False)
-                url = info['url']
-            
-            # 오디오 재생
-            vc.play(discord.FFmpegPCMAudio(url, before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', options='-vn'))
+                # 혹시 info가 dict가 아니라 None일 수 있으니 체크
+                if info:
+                    url = info.get('url')
+                    vc.play(discord.FFmpegPCMAudio(url, before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', options='-vn'))
+                    print("[성공] 음악 재생 시작!")
+                else:
+                    print("[오류] 정보 추출 실패!")
         except Exception as e:
-            print(f"[재생 오류] {e}")
+            print(f"[상세 오류] {e}")
 
 async def setup(bot):
     await bot.add_cog(AutoMusic(bot))
