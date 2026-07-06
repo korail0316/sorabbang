@@ -3,10 +3,12 @@ from discord.ext import commands
 import yt_dlp
 import asyncio
 
+# cogs/music_auto.py 파일의 윗부분
 ytdl_opts = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
+    'cookiefile': 'cookies.txt',  # <--- 이 줄을 반드시 추가하세요
 }
 
 class AutoMusic(commands.Cog):
