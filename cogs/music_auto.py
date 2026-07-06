@@ -33,6 +33,24 @@ class AutoMusic(commands.Cog):
                 print(f"[DEBUG] 채널에 혼자 남음, 퇴장합니다.")
                 await voice_client.disconnect()
 
+    async def play_music(self, vc):
+        try:
+            loop = self.bot.loop
+            print("[DEBUG] 오디오 추출 시작...")
+            data = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ytdl_opts).extract_info(self.youtube_url, download=False))
+            url = data['url']
+            print(f"[DEBUG] 오디오 URL 추출 성공: {url}")
+            
+            ffmpeg_opts = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 
+                'options': '-vn'
+            }
+            # 재생 시도
+            vc.play(discord.FFmpegPCMAudio(url, **ffmpeg_opts), after=lambda e: print(f"[DEBUG] 재생 종료 혹은 오류: {e}"))
+            print("[DEBUG] 재생 명령 전달 완료!")
+        except Exception as e:
+            print(f"[ERROR] 재생 실패: {e}")
+
 async def setup(bot):
     await bot.add_cog(AutoMusic(bot))
     print("AutoMusic 기능이 로드되었습니다.")
