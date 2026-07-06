@@ -32,6 +32,12 @@ class AutoMusic(commands.Cog):
             if voice_client and len(before.channel.members) == 1:
                 await voice_client.disconnect()
 
+        # 디버깅: 누가 어디로 들어왔는지 로그 출력
+        if after.channel:
+            print(f"DEBUG: {member.name}님이 {after.channel.name}에 입장함")
+        
+        if after.channel and after.channel.name == self.target_channel:
+
     async def play_music(self, vc):
         loop = self.bot.loop
         data = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ytdl_opts).extract_info(self.youtube_url, download=False))
