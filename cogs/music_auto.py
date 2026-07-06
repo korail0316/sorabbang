@@ -9,7 +9,14 @@ class AutoMusic(commands.Cog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if member.bot: return
-        if after.channel and after.channel.name == self.target_channel:
+        
+        # 봇이 뭘 보고 있는지 로그에 출력하게 만듭니다.
+        if after.channel:
+            print(f"[DEBUG] 현재 접속한 채널 이름: '{after.channel.name}'")
+        
+        # 이름이 같은지 확인
+        if after.channel and after.channel.name == "라운지":
+            print("[DEBUG] 채널 일치! 접속 시도...")
             vc = await after.channel.connect()
             await self.play_music(vc)
         elif before.channel and before.channel.name == self.target_channel:
