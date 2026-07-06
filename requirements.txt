@@ -3,3 +3,5 @@ python-dotenv
 google-generativeai==0.7.2
 Pillow
 yt-dlp
+PyNaCl
+discord.py[voice]
