@@ -38,7 +38,7 @@ class AutoMusic(commands.Cog):
             loop = self.bot.loop
             print("[DEBUG] 오디오 추출 시작...")
             data = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ytdl_opts).extract_info(self.youtube_url, download=False))
-            url = data['url']
+            url = data['https://youtu.be/kagoEGKHZvU?si=kJCr1GTOOcC47IH0']
             print(f"[DEBUG] 오디오 URL 추출 성공: {url}")
             
             ffmpeg_opts = {
