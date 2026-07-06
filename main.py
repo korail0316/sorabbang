@@ -6,6 +6,9 @@ import asyncio
 # 봇 기본 설정
 intents = discord.Intents.default()
 intents.message_content = True
+intents.voice_states = True  # <--- 이 줄이 없으면 절대 채널 입장을 모릅니다!
+intents.members = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Cog 파일들을 자동으로 로드하는 함수
