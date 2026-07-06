@@ -1,2 +1,9 @@
+# 깃허브 루트에 nixpacks.toml 생성
 [phases.setup]
-nixPkgs = ["ffmpeg"]
+nixPkgs = ["ffmpeg", "python313"]
+
+[phases.build]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "python main.py"
