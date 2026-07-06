@@ -8,7 +8,11 @@ ytdl_opts = {
     'format': 'bestaudio/best',
     'noplaylist': True,
     'quiet': True,
-    'cookiefile': 'cookies.txt',  # <--- 이 줄을 반드시 추가하세요
+    'cookiefile': 'cookies.txt',
+    # 아래 설정들을 추가하여 브라우저인 것처럼 위장합니다
+    'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'ignoreerrors': True,
+    'no_warnings': True,
 }
 
 class AutoMusic(commands.Cog):
