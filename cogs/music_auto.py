@@ -17,9 +17,10 @@ class AutoMusic(commands.Cog):
             if vc and len(before.channel.members) == 0:
                 await vc.disconnect()
 
-    async def play_music(self, vc):
+async def play_music(self, vc):
         url = "https://drive.google.com/uc?export=download&id=12o-e071uRMl2Hajx9k2JPLfqlMbrN7j6"
-        vc.play(discord.FFmpegPCMAudio(url, before_options="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", options="-vn"))
+        # 'executable' 경로를 추가하여 서버 환경에서 ffmpeg를 확실히 찾게 함
+        vc.play(discord.FFmpegPCMAudio(url, executable="ffmpeg", options="-vn"))
 
 async def setup(bot):
     await bot.add_cog(AutoMusic(bot))
